@@ -1,0 +1,186 @@
+<template>
+  <div class="p-4">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+      <div class="flex items-center gap-2 w-full md:w-1/2">
+        <q-input
+          dense
+          debounce="300"
+          v-model="filter"
+          placeholder="Rechercher..."
+          class="w-full"
+        >
+          <template v-slot:append>
+            <q-icon name="search" />
+          </template>
+        </q-input>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <q-btn
+          color="primary"
+          label="Ajouter"
+          icon="add"
+          dense
+          flat
+          @click="openAddDialog"
+        />
+      </div>
+    </div>
+
+    <q-table
+      :rows="filteredRows"
+      :columns="columns"
+      row-key="id"
+      flat
+      bordered
+      class="bg-white shadow-sm rounded-lg overflow-hidden"
+    >
+      <template v-slot:body-cell-actions="props">
+        <div class="flex items-center gap-2">
+          <q-btn
+            dense
+            flat
+            icon="edit"
+            color="primary"
+            @click="openEditDialog(props.row)"
+          />
+          <q-btn
+            dense
+            flat
+            icon="delete"
+            color="negative"
+            @click="confirmDelete(props.row)"
+          />
+        </div>
+      </template>
+    </q-table>
+
+    <!-- Add/Edit Dialog -->
+    <q-dialog v-model="dialog.show">
+      <q-card class="w-full md:w-2/3 lg:w-1/2">
+        <q-card-section>
+          <div class="text-lg font-semibold">
+            {{ dialog.mode === "add" ? "Ajouter un item" : "Modifier l'item" }}
+          </div>
+        </q-card-section>
+
+        <q-card-section>
+          <div class="grid grid-cols-1 gap-3">
+            <q-input v-model="dialog.form.title" label="Titre" />
+            <q-input
+              v-model="dialog.form.description"
+              label="Description"
+              type="textarea"
+            />
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Annuler" color="primary" @click="closeDialog" />
+          <q-btn label="Sauvegarder" color="primary" @click="saveItem" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Confirm Delete -->
+    <q-dialog v-model="confirm.show">
+      <q-card>
+        <q-card-section>
+          <div class="text-lg font-semibold">Confirmer la suppression</div>
+        </q-card-section>
+        <q-card-section>
+          Voulez-vous vraiment supprimer "{{ confirm.row?.title }}" ?
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Annuler" @click="confirm.show = false" />
+          <q-btn color="negative" label="Supprimer" @click="deleteItem" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from "vue";
+
+const rows = ref([
+  { id: 1, title: "Promo 2023", description: "Promo des étudiants de 2023" },
+  { id: 2, title: "Promo 2024", description: "Promo des étudiants de 2024" },
+]);
+
+const filter = ref("");
+
+const columns = [
+  { name: "id", label: "ID", field: "id", sortable: true, align: "center" },
+  { name: "title", label: "Titre", field: "title", sortable: true, align: "center" },
+  { name: "description", label: "Description", field: "description", align: "center" },
+  {
+    name: "actions",
+    label: "Actions",
+    field: "actions",
+    sortable: false,
+    align: "center",
+  },
+];
+
+const filteredRows = computed(() => {
+  if (!filter.value) return rows.value;
+  const q = filter.value.toLowerCase();
+  return rows.value.filter((r) =>
+    (r.title + " " + r.description).toLowerCase().includes(q)
+  );
+});
+
+const dialog = ref({
+  show: false,
+  mode: "add",
+  form: { id: null, title: "", description: "" },
+});
+const confirm = ref({ show: false, row: null });
+
+function openAddDialog() {
+  dialog.value = {
+    show: true,
+    mode: "add",
+    form: { id: null, title: "", description: "" },
+  };
+}
+
+function openEditDialog(row) {
+  dialog.value = { show: true, mode: "edit", form: { ...row } };
+}
+
+function closeDialog() {
+  dialog.value.show = false;
+}
+
+function saveItem() {
+  const f = dialog.value.form;
+  if (dialog.value.mode === "add") {
+    const id = rows.value.length ? Math.max(...rows.value.map((r) => r.id)) + 1 : 1;
+    rows.value.push({ id, title: f.title, description: f.description });
+  } else {
+    const idx = rows.value.findIndex((r) => r.id === f.id);
+    if (idx !== -1) rows.value[idx] = { ...f };
+  }
+  closeDialog();
+}
+
+function confirmDelete(row) {
+  confirm.value = { show: true, row };
+}
+
+function deleteItem() {
+  const id = confirm.value.row.id;
+  rows.value = rows.value.filter((r) => r.id !== id);
+  confirm.value = { show: false, row: null };
+}
+
+defineOptions({ name: "AdminPromPage" });
+</script>
+
+<style scoped>
+.q-table__bottom {
+  display: none;
+}
+</style>

@@ -19,5 +19,5 @@
 </template>
 
 <script setup>
-//
+defineOptions({ name: 'ErrorNotFound' })
 </script>
