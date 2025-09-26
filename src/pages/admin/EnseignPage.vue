@@ -101,19 +101,22 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { useQuasar } from "quasar";
+import { useEnseignantStore } from "src/stores/enseignant";
+import { ref, computed, onMounted } from "vue";
+const ensStore = useEnseignantStore();
 
-const rows = ref([
-  { id: 1, title: "Promo 2023", description: "Promo des étudiants de 2023" },
-  { id: 2, title: "Promo 2024", description: "Promo des étudiants de 2024" },
-]);
+const rows = ref(ensStore.getProms);
 
 const filter = ref("");
+const q = useQuasar();
 
 const columns = [
-  { name: "id", label: "ID", field: "id", sortable: true, align: "center" },
-  { name: "title", label: "Titre", field: "title", sortable: true, align: "center" },
-  { name: "description", label: "Description", field: "description", align: "center" },
+  { name: "id", label: "ID", field: "_id", sortable: true, align: "center" },
+  { name: "nom", label: "nom", field: "nom", sortable: true, align: "center" },
+  { name: "postnom", label: "postnom", field: "postnom", align: "center" },
+  { name: "email", label: "email", field: "email", align: "center" },
+  { name: "phone", label: "phone", field: "phone", align: "center" },
   {
     name: "actions",
     label: "Actions",
@@ -175,6 +178,10 @@ function deleteItem() {
   rows.value = rows.value.filter((r) => r.id !== id);
   confirm.value = { show: false, row: null };
 }
+
+onMounted(() => {
+  ensStore.fetch(q).then();
+});
 
 defineOptions({ name: "AdminPromPage" });
 </script>

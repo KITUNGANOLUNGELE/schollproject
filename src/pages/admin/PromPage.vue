@@ -66,12 +66,7 @@
 
         <q-card-section>
           <div class="grid grid-cols-1 gap-3">
-            <q-input v-model="dialog.form.title" label="Titre" />
-            <q-input
-              v-model="dialog.form.description"
-              label="Description"
-              type="textarea"
-            />
+            <q-input v-model="dialog.form.designation" label="designation" />
           </div>
         </q-card-section>
 
@@ -101,19 +96,24 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { useQuasar } from "quasar";
+import { usePromStore } from "src/stores/promotion";
+import { ref, computed, onMounted } from "vue";
+const promStore = usePromStore();
 
-const rows = ref([
-  { id: 1, title: "Promo 2023", description: "Promo des étudiants de 2023" },
-  { id: 2, title: "Promo 2024", description: "Promo des étudiants de 2024" },
-]);
+const rows = computed(() => promStore.getProms);
 
 const filter = ref("");
-
+const q = useQuasar();
 const columns = [
-  { name: "id", label: "ID", field: "id", sortable: true, align: "center" },
-  { name: "title", label: "Titre", field: "title", sortable: true, align: "center" },
-  { name: "description", label: "Description", field: "description", align: "center" },
+  { name: "_id", label: "ID", field: "_id", sortable: true, align: "center" },
+  {
+    name: "designation",
+    label: "Designation",
+    field: "designation",
+    sortable: true,
+    align: "center",
+  },
   {
     name: "actions",
     label: "Actions",
@@ -126,15 +126,13 @@ const columns = [
 const filteredRows = computed(() => {
   if (!filter.value) return rows.value;
   const q = filter.value.toLowerCase();
-  return rows.value.filter((r) =>
-    (r.title + " " + r.description).toLowerCase().includes(q)
-  );
+  return rows.value.filter((r) => r?.designation?.toLowerCase()?.includes(q));
 });
 
 const dialog = ref({
   show: false,
   mode: "add",
-  form: { id: null, title: "", description: "" },
+  form: { id: null, designation: "" },
 });
 const confirm = ref({ show: false, row: null });
 
@@ -142,7 +140,7 @@ function openAddDialog() {
   dialog.value = {
     show: true,
     mode: "add",
-    form: { id: null, title: "", description: "" },
+    form: { id: null, designation: "" },
   };
 }
 
@@ -157,8 +155,7 @@ function closeDialog() {
 function saveItem() {
   const f = dialog.value.form;
   if (dialog.value.mode === "add") {
-    const id = rows.value.length ? Math.max(...rows.value.map((r) => r.id)) + 1 : 1;
-    rows.value.push({ id, title: f.title, description: f.description });
+    promStore.add(q, f).then();
   } else {
     const idx = rows.value.findIndex((r) => r.id === f.id);
     if (idx !== -1) rows.value[idx] = { ...f };
@@ -175,6 +172,10 @@ function deleteItem() {
   rows.value = rows.value.filter((r) => r.id !== id);
   confirm.value = { show: false, row: null };
 }
+
+onMounted(() => {
+  promStore.fetch(q).then();
+});
 
 defineOptions({ name: "AdminPromPage" });
 </script>

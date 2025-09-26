@@ -10,6 +10,11 @@ const routes = [
     component: () => import('layouts/AdminLayout.vue'),
     children: [
       {
+        path: '',
+        component: () => import('src/pages/admin/DashPage.vue')
+
+      },
+      {
         path: '/dashboard',
         component: () => import('src/pages/admin/DashPage.vue')
       },

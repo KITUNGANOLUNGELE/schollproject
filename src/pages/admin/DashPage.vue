@@ -16,48 +16,73 @@
 </template>
 
 <script setup>
-const nb = [
+import { useQuasar } from "quasar";
+import { useCoursStore } from "src/stores/cours";
+import { useEnseignantStore } from "src/stores/enseignant";
+import { useEnseignementStore } from "src/stores/enseignement";
+import { useStudStore } from "src/stores/etudiant";
+import { useInscriptionStore } from "src/stores/inscription";
+import { usePromStore } from "src/stores/promotion";
+import { onMounted, computed } from "vue";
+const promStore = usePromStore();
+const studentStore = useStudStore();
+const inscrStore = useInscriptionStore();
+const coursStore = useCoursStore();
+const ensStore = useEnseignantStore();
+const enseignStore = useEnseignementStore();
+const q = useQuasar();
+const nb = computed(() => [
   {
     titre: "Promotion",
-    nombre: 12,
+    nombre: promStore.getProms.length,
     icone: "landmark",
     color: "text-pink-700",
     bgColor: "bg-pink-100",
   },
   {
     titre: "Etudiant",
-    nombre: 12,
+    nombre: studentStore.getProms.length,
     icone: "user",
     color: "text-green-700",
     bgColor: "bg-green-100",
   },
   {
     titre: "Inscription",
-    nombre: 12,
+    nombre: inscrStore.getProms.length,
     icone: "user-graduate",
     color: "text-blue-700",
     bgColor: "bg-blue-100",
   },
   {
     titre: "Enseignant",
-    nombre: 12,
+    nombre: ensStore.getProms.length,
     icone: "user",
     color: "text-purple-700",
     bgColor: "bg-purple-100",
   },
   {
     titre: "Cours",
-    nombre: 12,
+    nombre: coursStore.getProms.length,
     icone: "book",
     color: "text-green-700",
     bgColor: "bg-green-100",
   },
   {
     titre: "Enseignement",
-    nombre: 12,
+    nombre: enseignStore.getProms.length,
     icone: "book-open",
     color: "text-orange-700",
     bgColor: "bg-orange-100",
   },
-];
+]);
+onMounted(async () => {
+  await Promise.all([
+    promStore.fetch(q),
+    studentStore.fetch(q),
+    inscrStore.fetch(q),
+    coursStore.fetch(q),
+    ensStore.fetch(q),
+    enseignStore.fetch(q),
+  ]);
+});
 </script>

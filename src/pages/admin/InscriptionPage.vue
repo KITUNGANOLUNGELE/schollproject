@@ -66,12 +66,31 @@
 
         <q-card-section>
           <div class="grid grid-cols-1 gap-3">
-            <q-input v-model="dialog.form.title" label="Titre" />
-            <q-input
-              v-model="dialog.form.description"
-              label="Description"
-              type="textarea"
-            />
+            <q-input v-model="dialog.form.designation" label="Année" />
+            <div class="flex justify-between">
+              <q-select
+                filled
+                v-model="dialog.form.etudiant"
+                use-input
+                input-debounce="0"
+                label="Etudiant"
+                :options="options"
+                @filter="filterFn"
+                style="width: 250px"
+                behavior="menu"
+              />
+              <q-select
+                filled
+                v-model="dialog.form.promotion"
+                use-input
+                input-debounce="0"
+                label="Promotion"
+                :options="PromOptions"
+                @filter="filterp"
+                style="width: 250px"
+                behavior="menu"
+              />
+            </div>
           </div>
         </q-card-section>
 
@@ -101,19 +120,54 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { useQuasar } from "quasar";
+import { useStudStore } from "src/stores/etudiant";
+import { useInscriptionStore } from "src/stores/inscription";
+import { usePromStore } from "src/stores/promotion";
+import { ref, computed, onMounted } from "vue";
+const etudiantStore = useStudStore();
+const promStore = usePromStore();
+const inscriptionStore = useInscriptionStore();
+const et = computed(() => etudiantStore.getProms);
+const prom = computed(() => promStore.getProms);
+const rows = computed(() =>
+  inscriptionStore.getProms.map((el) => ({
+    _id: el?._id,
+    annee: el?.annee,
+    nom: el?.etudiant?.nom,
+    postnom: el?.etudiant?.postnom,
+    promotion: el?.promotion?.designation,
+  }))
+);
 
-const rows = ref([
-  { id: 1, title: "Promo 2023", description: "Promo des étudiants de 2023" },
-  { id: 2, title: "Promo 2024", description: "Promo des étudiants de 2024" },
-]);
+const options = ref([]);
+const PromOptions = ref([]);
 
 const filter = ref("");
-
+const q = useQuasar();
 const columns = [
-  { name: "id", label: "ID", field: "id", sortable: true, align: "center" },
-  { name: "title", label: "Titre", field: "title", sortable: true, align: "center" },
-  { name: "description", label: "Description", field: "description", align: "center" },
+  { name: "_id", label: "ID", field: "_id", sortable: true, align: "center" },
+  {
+    name: "nom",
+    label: "Nom",
+    field: "nom",
+    sortable: true,
+    align: "center",
+  },
+  {
+    name: "postnom",
+    label: "Postom",
+    field: "postnom",
+    sortable: true,
+    align: "center",
+  },
+  {
+    name: "promotion",
+    label: "promotion",
+    field: "promotion",
+    sortable: true,
+    align: "center",
+  },
   {
     name: "actions",
     label: "Actions",
@@ -126,15 +180,13 @@ const columns = [
 const filteredRows = computed(() => {
   if (!filter.value) return rows.value;
   const q = filter.value.toLowerCase();
-  return rows.value.filter((r) =>
-    (r.title + " " + r.description).toLowerCase().includes(q)
-  );
+  return rows.value.filter((r) => (r?.nom + " " + r.postnom)?.toLowerCase()?.includes(q));
 });
 
 const dialog = ref({
   show: false,
   mode: "add",
-  form: { id: null, title: "", description: "" },
+  form: { id: null, etudiant: null, promotion: null, annee: "" },
 });
 const confirm = ref({ show: false, row: null });
 
@@ -142,7 +194,7 @@ function openAddDialog() {
   dialog.value = {
     show: true,
     mode: "add",
-    form: { id: null, title: "", description: "" },
+    form: { id: null, etudiant: null, promotion: null, annee: "" },
   };
 }
 
@@ -156,9 +208,9 @@ function closeDialog() {
 
 function saveItem() {
   const f = dialog.value.form;
+  const fc = { annee: f.annee, etudiant: f.etudiant.value, promotion: f.promotion.value };
   if (dialog.value.mode === "add") {
-    const id = rows.value.length ? Math.max(...rows.value.map((r) => r.id)) + 1 : 1;
-    rows.value.push({ id, title: f.title, description: f.description });
+    inscriptionStore.add(q, fc).then();
   } else {
     const idx = rows.value.findIndex((r) => r.id === f.id);
     if (idx !== -1) rows.value[idx] = { ...f };
@@ -175,6 +227,72 @@ function deleteItem() {
   rows.value = rows.value.filter((r) => r.id !== id);
   confirm.value = { show: false, row: null };
 }
+
+// filtrer etudiant
+
+function filterFn(val, update) {
+  if (val === "") {
+    update(() => {
+      options.value = et.value.map((el) => ({
+        value: el?._id,
+        label: el?.nom + " " + el?.postnom,
+      }));
+    });
+    return;
+  }
+
+  update(() => {
+    const needle = val.toLowerCase();
+    options.value = et.value
+      .filter((v) => (v?.nom + " " + v?.postnom)?.toLocaleLowerCase()?.includes(needle))
+      .map((el) => ({
+        value: el?._id,
+        label: el?.nom + " " + el?.postnom,
+      }));
+  });
+}
+
+//filtrer promotion
+
+function filterp(val, update) {
+  if (val === "") {
+    update(() => {
+      PromOptions.value = prom.value.map((el) => ({
+        value: el?._id,
+        label: el?.designation,
+      }));
+    });
+    return;
+  }
+
+  update(() => {
+    const needle = val.toLowerCase();
+    PromOptions.value = prom.value
+      .filter((v) => v?.designation?.toLocaleLowerCase()?.includes(needle))
+      .map((el) => ({
+        value: el?._id,
+        label: el?.designation,
+      }));
+  });
+}
+
+onMounted(async () => {
+  await Promise.all([
+    etudiantStore.fetch(q),
+    promStore.fetch(q),
+    inscriptionStore.fetch(q),
+  ]);
+
+  // initialize select options after fetch
+  options.value = et.value.map((el) => ({
+    value: el?._id,
+    label: el?.nom + " " + el?.postnom,
+  }));
+  PromOptions.value = prom.value.map((el) => ({
+    value: el?._id,
+    label: el?.designation,
+  }));
+});
 
 defineOptions({ name: "AdminPromPage" });
 </script>
