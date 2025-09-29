@@ -26,7 +26,7 @@
             @click="toggleMenu"
             v-if="$q.platform.is.mobile"
           />
-          <div class="text-lg md:text-xl font-bold text-gray-400">Espace admin</div>
+          <div class="text-lg md:text-xl font-bold text-gray-400">Espace enseignant</div>
           <div class>
             <q-btn color="primary" dense flat icon="logout" @click="logout" />
           </div>
@@ -57,13 +57,9 @@ const $q = useQuasar();
 const navRef = ref(null);
 const router = useRouter();
 const list = [
-  { icone: "dashboard", titre: "Dashboard", lien: "/dashboard" },
-  { icone: "landmark", titre: "Promotion", lien: "/promotion" },
-  { icone: "user", titre: "Etudiant", lien: "/etudiant" },
-  { icone: "user-graduate", titre: "Inscription", lien: "/inscription" },
-  { icone: "user", titre: "Enseignant", lien: "/enseignant" },
-  { icone: "book", titre: "Cours", lien: "/cours" },
-  { icone: "book-open", titre: "Enseignement", lien: "/enseignement" },
+  { icone: "dashboard", titre: "Dashboard", lien: "/ens" },
+  { icone: "book-open", titre: "Enseignement", lien: "/ens-enseignement" },
+  { icone: "book", titre: "Cote", lien: "/cote" },
 ];
 
 const toggleMenu = () => {

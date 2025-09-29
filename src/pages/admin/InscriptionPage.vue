@@ -66,7 +66,7 @@
 
         <q-card-section>
           <div class="grid grid-cols-1 gap-3">
-            <q-input v-model="dialog.form.designation" label="Année" />
+            <q-input v-model="dialog.form.annee" label="Année" />
             <div class="flex justify-between">
               <q-select
                 filled

@@ -66,12 +66,20 @@
 
         <q-card-section>
           <div class="grid grid-cols-1 gap-3">
-            <q-input v-model="dialog.form.title" label="Titre" />
-            <q-input
-              v-model="dialog.form.description"
-              label="Description"
-              type="textarea"
-            />
+            <q-input v-model="dialog.form.designation" label="Désignation" />
+            <div>
+              <q-select
+                filled
+                v-model="dialog.form.promotion"
+                use-input
+                input-debounce="0"
+                label="Promotion"
+                :options="PromOptions"
+                @filter="filterp"
+                style="width: 250px"
+                behavior="menu"
+              />
+            </div>
           </div>
         </q-card-section>
 
@@ -101,19 +109,40 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
-
-const rows = ref([
-  { id: 1, title: "Promo 2023", description: "Promo des étudiants de 2023" },
-  { id: 2, title: "Promo 2024", description: "Promo des étudiants de 2024" },
-]);
+import { useQuasar } from "quasar";
+import { useCoursStore } from "src/stores/cours";
+import { usePromStore } from "src/stores/promotion";
+import { ref, computed, onMounted } from "vue";
+const promStore = usePromStore();
+const coursStore = useCoursStore();
+const prom = computed(() => promStore.getProms);
+const rows = computed(() =>
+  coursStore.getProms.map((el) => ({
+    _id: el?._id,
+    promotion: el?.promotion?.designation,
+    designation: el?.designation,
+  }))
+);
+const PromOptions = ref([]);
 
 const filter = ref("");
-
+const q = useQuasar();
 const columns = [
-  { name: "id", label: "ID", field: "id", sortable: true, align: "center" },
-  { name: "title", label: "Titre", field: "title", sortable: true, align: "center" },
-  { name: "description", label: "Description", field: "description", align: "center" },
+  { name: "_id", label: "ID", field: "_id", sortable: true, align: "center" },
+  {
+    name: "designation",
+    label: "Désignation",
+    field: "designation",
+    sortable: true,
+    align: "center",
+  },
+  {
+    name: "promotion",
+    label: "promotion",
+    field: "promotion",
+    sortable: true,
+    align: "center",
+  },
   {
     name: "actions",
     label: "Actions",
@@ -126,15 +155,13 @@ const columns = [
 const filteredRows = computed(() => {
   if (!filter.value) return rows.value;
   const q = filter.value.toLowerCase();
-  return rows.value.filter((r) =>
-    (r.title + " " + r.description).toLowerCase().includes(q)
-  );
+  return rows.value.filter((r) => (r?.nom + " " + r.postnom)?.toLowerCase()?.includes(q));
 });
 
 const dialog = ref({
   show: false,
   mode: "add",
-  form: { id: null, title: "", description: "" },
+  form: { id: null, designation: "", promotion: null },
 });
 const confirm = ref({ show: false, row: null });
 
@@ -142,7 +169,7 @@ function openAddDialog() {
   dialog.value = {
     show: true,
     mode: "add",
-    form: { id: null, title: "", description: "" },
+    form: { id: null, designation: "", promotion: null },
   };
 }
 
@@ -156,9 +183,9 @@ function closeDialog() {
 
 function saveItem() {
   const f = dialog.value.form;
+  const fc = { designation: f.designation, promotion: f.promotion.value };
   if (dialog.value.mode === "add") {
-    const id = rows.value.length ? Math.max(...rows.value.map((r) => r.id)) + 1 : 1;
-    rows.value.push({ id, title: f.title, description: f.description });
+    coursStore.add(q, fc).then();
   } else {
     const idx = rows.value.findIndex((r) => r.id === f.id);
     if (idx !== -1) rows.value[idx] = { ...f };
@@ -175,6 +202,39 @@ function deleteItem() {
   rows.value = rows.value.filter((r) => r.id !== id);
   confirm.value = { show: false, row: null };
 }
+
+//filtrer promotion
+
+function filterp(val, update) {
+  if (val === "") {
+    update(() => {
+      PromOptions.value = prom.value.map((el) => ({
+        value: el?._id,
+        label: el?.designation,
+      }));
+    });
+    return;
+  }
+
+  update(() => {
+    const needle = val.toLowerCase();
+    PromOptions.value = prom.value
+      .filter((v) => v?.designation?.toLocaleLowerCase()?.includes(needle))
+      .map((el) => ({
+        value: el?._id,
+        label: el?.designation,
+      }));
+  });
+}
+
+onMounted(async () => {
+  await Promise.all([promStore.fetch(q), coursStore.fetch(q)]);
+
+  PromOptions.value = prom.value.map((el) => ({
+    value: el?._id,
+    label: el?.designation,
+  }));
+});
 
 defineOptions({ name: "AdminPromPage" });
 </script>

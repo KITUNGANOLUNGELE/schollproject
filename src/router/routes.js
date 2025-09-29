@@ -46,6 +46,25 @@ const routes = [
     ]
 
   },
+  {
+    path: "/ens",
+    component: () => import('layouts/EnsLayout.vue'),
+    children: [
+      {
+        path: "",
+        component: () => import('pages/enseignant/DashPage.vue')
+      }, {
+        path: "/ens-enseignement",
+        component: () => import('pages/enseignant/EnseignPage.vue')
+      }, {
+        path: "/cote",
+        component: () => import('pages/enseignant/CotePage.vue')
+      }
+
+
+    ]
+  },
+
 
   // Always leave this as last one,
   // but you can also remove it
