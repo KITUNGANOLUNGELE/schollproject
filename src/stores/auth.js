@@ -24,7 +24,7 @@ export const useAuthStore = defineStore("auth", {
 
             } else if (this.user.role == 'etudiant') {
                 localStorage.setItem("user", JSON.stringify(this.user));
-                router.replace('/admin')
+                router.replace('/et')
             }
             else {
                 Notify.create({

@@ -64,6 +64,17 @@ const routes = [
 
     ]
   },
+  {
+
+    path: "/et",
+    component: () => import('layouts/StudentLayout.vue'),
+    children: [
+      {
+        path: "",
+        component: () => import('pages/etudiant/DashPage.vue')
+      }
+    ]
+  },
 
 
   // Always leave this as last one,

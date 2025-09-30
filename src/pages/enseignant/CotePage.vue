@@ -13,17 +13,7 @@
             <q-icon name="search" />
           </template>
         </q-input>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <q-btn
-          color="primary"
-          label="Ajouter"
-          icon="add"
-          dense
-          flat
-          @click="openAddDialog"
-        />
+        {{ dialog.form.inscription }}
       </div>
     </div>
 
@@ -40,17 +30,11 @@
           <q-btn
             dense
             flat
-            icon="edit"
+            icon="book"
             color="primary"
-            @click="openEditDialog(props.row)"
+            @click="openAddDialog(props.row)"
           />
-          <q-btn
-            dense
-            flat
-            icon="delete"
-            color="negative"
-            @click="confirmDelete(props.row)"
-          />
+          <q-btn dense flat icon="list" color="green" @click="openConfirm(props.row)" />
         </div>
       </template>
     </q-table>
@@ -59,35 +43,27 @@
     <q-dialog v-model="dialog.show">
       <q-card class="w-full md:w-2/3 lg:w-1/2">
         <q-card-section>
-          <div class="text-lg font-semibold">
-            {{ dialog.mode === "add" ? "Ajouter un item" : "Modifier l'item" }}
-          </div>
+          <div class="text-lg font-semibold">Ajouter des côtes</div>
         </q-card-section>
 
         <q-card-section>
           <div class="grid grid-cols-1 gap-3">
-            <q-input v-model="dialog.form.designation" label="Designation" />
+            <q-input
+              v-model="dialog.form.points"
+              type="number"
+              step="0.1"
+              label="Points"
+            />
             <q-input v-model="dialog.form.annee" label="Année" />
             <div class="flex justify-between">
               <q-select
                 filled
-                v-model="dialog.form.enseignant"
+                v-model="insc"
                 use-input
                 input-debounce="0"
-                label="Enseignant"
+                label="Etudiant"
                 :options="options"
                 @filter="filterFn"
-                style="width: 250px"
-                behavior="menu"
-              />
-              <q-select
-                filled
-                v-model="dialog.form.cours"
-                use-input
-                input-debounce="0"
-                label="Cours"
-                :options="PromOptions"
-                @filter="filterp"
                 style="width: 250px"
                 behavior="menu"
               />
@@ -101,20 +77,36 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-
-    <!-- Confirm Delete -->
-    <q-dialog v-model="confirm.show">
+    <!-- Visionner les cotes -->
+    <q-dialog v-model="confirm">
       <q-card>
         <q-card-section>
-          <div class="text-lg font-semibold">Confirmer la suppression</div>
+          <div v-for="item in lesCotes" :key="item.id">
+            <div
+              class="bg-blue-200 p-3 rounded-lg flex justify-center gap-3 items-center"
+            >
+              <p>
+                {{
+                  item?.inscription?.etudiant?.nom +
+                  " " +
+                  item?.inscription?.etudiant?.postnom
+                }}
+              </p>
+              <p
+                :class="
+                  item?.points > 10
+                    ? 'text-green-500 font-bold text-base'
+                    : 'text-red-500 font-bold text-base'
+                "
+              >
+                {{ item?.points + "/" + item?.max }}
+              </p>
+              <button class="px-2 py-1 rounded-lg bg-red-100">
+                <i class="fas fa-trash text-red-600"></i>
+              </button>
+            </div>
+          </div>
         </q-card-section>
-        <q-card-section>
-          Voulez-vous vraiment supprimer "{{ confirm.row?.title }}" ?
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Annuler" @click="confirm.show = false" />
-          <q-btn color="negative" label="Supprimer" @click="deleteItem" />
-        </q-card-actions>
       </q-card>
     </q-dialog>
   </div>
@@ -122,15 +114,15 @@
 
 <script setup>
 import { useQuasar } from "quasar";
-import { useCoursStore } from "src/stores/cours";
-import { useEnseignantStore } from "src/stores/enseignant";
+import { useCoteStore } from "src/stores/cote";
 import { useEnseignementStore } from "src/stores/enseignement";
+import { useInscriptionStore } from "src/stores/inscription";
 import { ref, computed, onMounted } from "vue";
-const ensStore = useEnseignantStore();
-const coursStore = useCoursStore();
+const inscrStore = useInscriptionStore();
 const enseignStore = useEnseignementStore();
-const et = computed(() => ensStore.getProms);
-const prom = computed(() => coursStore.getProms);
+const et = ref(null);
+const coteStore = useCoteStore();
+const insc = ref(null);
 const rows = computed(() =>
   enseignStore.getProms.map((el) => ({
     _id: el?._id,
@@ -138,13 +130,16 @@ const rows = computed(() =>
     nom: el?.enseignant?.nom,
     postnom: el?.enseignant?.postnom,
     cours: el?.cours?.designation,
+    coursId: el?.cours?._id,
+    promotion: el?.cours?.promotion,
   }))
 );
 
 const options = ref([]);
-const PromOptions = ref([]);
+const lesCotes = ref([]);
 
 const filter = ref("");
+const confirm = ref(false);
 const q = useQuasar();
 const columns = [
   { name: "_id", label: "ID", field: "_id", sortable: true, align: "center" },
@@ -181,26 +176,44 @@ const columns = [
 const filteredRows = computed(() => {
   if (!filter.value) return rows.value;
   const q = filter.value.toLowerCase();
-  return rows.value.filter((r) => (r?.nom + " " + r.postnom)?.toLowerCase()?.includes(q));
+  return rows.value.filter(
+    (r) =>
+      r?.cours?.toLowerCase()?.includes(q) ||
+      r?.annee?.toString()?.toLowerCase()?.includes(q)
+  );
 });
 
 const dialog = ref({
   show: false,
   mode: "add",
-  form: { id: null, designation: "", cours: null, enseignant: null, annee: "" },
+  form: { points: "", max: "", inscription: null, cours: null, annee: "" },
 });
-const confirm = ref({ show: false, row: null });
 
-function openAddDialog() {
+function openAddDialog(row) {
+  //lecture des inscriptions
+  et.value = inscrStore.getProms
+    .filter((el) => el?.promotion?._id == row?.promotion)
+    ?.map((el) => ({
+      id: el?._id,
+      nom: el?.etudiant?.nom,
+      postnom: el?.etudiant?.postnom,
+    }));
+  //initialisation des options
+  options.value = et.value?.map((el) => ({
+    value: el?.id,
+    label: el?.nom + " " + el?.postnom,
+  }));
   dialog.value = {
     show: true,
     mode: "add",
-    form: { id: null, designation: "", cours: null, enseignant: null, annee: "" },
+    form: {
+      points: "",
+      max: 20,
+      inscription: null,
+      cours: row.coursId,
+      annee: row.annee,
+    },
   };
-}
-
-function openEditDialog(row) {
-  dialog.value = { show: true, mode: "edit", form: { ...row } };
 }
 
 function closeDialog() {
@@ -209,25 +222,28 @@ function closeDialog() {
 
 function saveItem() {
   const f = dialog.value.form;
-  const fc = { annee: f.annee, enseignant: f.enseignant.value, cours: f.cours.value };
+  console.log("inscription", insc.value);
+  const fc = {
+    annee: f.annee,
+    inscription: insc.value.value,
+    cours: f.cours,
+    points: f.points,
+    max: f.max,
+  };
+  console.log(fc);
   if (dialog.value.mode === "add") {
-    enseignStore.add(q, fc).then();
+    coteStore.add(q, fc).then();
   } else {
     const idx = rows.value.findIndex((r) => r.id === f.id);
     if (idx !== -1) rows.value[idx] = { ...f };
   }
   closeDialog();
 }
-
-function confirmDelete(row) {
-  confirm.value = { show: true, row };
-}
-
-function deleteItem() {
-  const id = confirm.value.row.id;
-  rows.value = rows.value.filter((r) => r.id !== id);
-  confirm.value = { show: false, row: null };
-}
+const openConfirm = (row) => {
+  confirm.value = !confirm.value;
+  lesCotes.value = coteStore.getProms.filter((el) => el?.cours?._id == row.coursId);
+  console.log(lesCotes);
+};
 
 // filtrer enseignant
 
@@ -235,7 +251,7 @@ function filterFn(val, update) {
   if (val === "") {
     update(() => {
       options.value = et.value.map((el) => ({
-        value: el?._id,
+        value: el?.id,
         label: el?.nom + " " + el?.postnom,
       }));
     });
@@ -247,48 +263,15 @@ function filterFn(val, update) {
     options.value = et.value
       .filter((v) => (v?.nom + " " + v?.postnom)?.toLocaleLowerCase()?.includes(needle))
       .map((el) => ({
-        value: el?._id,
+        value: el?.id,
         label: el?.nom + " " + el?.postnom,
       }));
   });
 }
 
 //filtrer cours
-
-function filterp(val, update) {
-  if (val === "") {
-    update(() => {
-      PromOptions.value = prom.value.map((el) => ({
-        value: el?._id,
-        label: el?.designation,
-      }));
-    });
-    return;
-  }
-
-  update(() => {
-    const needle = val.toLowerCase();
-    PromOptions.value = prom.value
-      .filter((v) => v?.designation?.toLocaleLowerCase()?.includes(needle))
-      .map((el) => ({
-        value: el?._id,
-        label: el?.designation,
-      }));
-  });
-}
-
 onMounted(async () => {
-  await Promise.all([ensStore.fetch(q), coursStore.fetch(q), enseignStore.fetch(q)]);
-
-  // initialize select options after fetch
-  options.value = et.value.map((el) => ({
-    value: el?._id,
-    label: el?.nom + " " + el?.postnom,
-  }));
-  PromOptions.value = prom.value.map((el) => ({
-    value: el?._id,
-    label: el?.designation,
-  }));
+  await Promise.all([inscrStore.fetch(q), enseignStore.fetch(q), coteStore.fetch(q)]);
 });
 
 defineOptions({ name: "AdminPromPage" });

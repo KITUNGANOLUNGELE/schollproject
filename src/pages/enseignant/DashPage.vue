@@ -31,13 +31,6 @@ const nb = computed(() => [
     color: "text-orange-700",
     bgColor: "bg-orange-100",
   },
-  {
-    titre: "Cotes",
-    nombre: 0,
-    icone: "book",
-    color: "text-green-700",
-    bgColor: "bg-green-100",
-  },
 ]);
 onMounted(async () => {
   await Promise.all([enseignStore.fetch(q)]);
